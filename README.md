@@ -4,10 +4,10 @@
 
 ## 📜 Overview
 
-This is a **research and educational** tool demonstrating potential vulnerabilities in DomainKeys Identified Mail (DKIM) implementations using weak RSA key sizes. It performs the following operations:
+This is a **research and educational** tool demonstrating DomainKeys Identified Mail (DKIM) facotrization using Quantum Computing. It performs the following operations:
 
 1. **Fetches the DKIM public key** from DNS.
-2. **Attempts to factor the RSA key** using quantum-inspired algorithms via Q#.
+2. **Attempts to factor the RSA key** using quantum algorithms via Q#.
 3. **Derives the private key** from the factorized components.
 4. **Generates and sends a DKIM-signed email** using the derived private key.
 
