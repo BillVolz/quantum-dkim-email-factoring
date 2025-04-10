@@ -1,9 +1,10 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31205.134
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantumEmail", "QuantumEmail\QuantumEmail.csproj", "{671911A9-019D-4B6B-9C96-718900B5D31F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantumEmail", "QuantumEmail.csproj", "{F7714040-A18D-9B59-279B-44B7837A38BB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantumEmail.Host", "..\QuantumEmail.Host\QuantumEmail.Host.csproj", "{0CA928C5-971E-4AB5-AF59-817F4569A0DE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,15 +12,19 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{671911A9-019D-4B6B-9C96-718900B5D31F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{671911A9-019D-4B6B-9C96-718900B5D31F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{671911A9-019D-4B6B-9C96-718900B5D31F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{671911A9-019D-4B6B-9C96-718900B5D31F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F7714040-A18D-9B59-279B-44B7837A38BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7714040-A18D-9B59-279B-44B7837A38BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7714040-A18D-9B59-279B-44B7837A38BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7714040-A18D-9B59-279B-44B7837A38BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0CA928C5-971E-4AB5-AF59-817F4569A0DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0CA928C5-971E-4AB5-AF59-817F4569A0DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0CA928C5-971E-4AB5-AF59-817F4569A0DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0CA928C5-971E-4AB5-AF59-817F4569A0DE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {EC73C11B-B3D6-48E6-AE9A-9E80D09461CF}
+		SolutionGuid = {03509CED-9F90-4B3A-BC80-586B05796E7D}
 	EndGlobalSection
 EndGlobal
