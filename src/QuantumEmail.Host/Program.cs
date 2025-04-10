@@ -13,7 +13,7 @@ namespace QuantumEmail.Host
     {
         static async Task Main(string[] args)
         {
-            var mailDomain = "microsoft.com";
+            var mailDomain = "example.com";
             var mailSelector = "s1024-meo";
 
             var largePrime = await BigintegerMath.GetDkimKeyAsync(mailDomain, mailSelector);
