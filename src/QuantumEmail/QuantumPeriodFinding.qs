@@ -15,7 +15,7 @@
     }
     
 
-operation QuantumPeriodFinding (num : Int, a : Int) : Unit {
+operation QuantumPeriodFinding (num : Int, a : Int) : Int {
   // Get least integer n1 such as : num^2 <= 2^n1
   let n1 = BitSizeI(num) * 2;
   let n2 = BitSizeI(num);
@@ -77,6 +77,7 @@ operation QuantumPeriodFinding (num : Int, a : Int) : Unit {
   // output for debugging
   Message("Found period " + Microsoft.Quantum.Convert.IntAsString(periodCandidate));
   Message("");
+  return periodCandidate;
 }
 
 // Implement : |x⟩ |0 (=y)⟩ -> |x⟩ |a^x mod N⟩ for some integer a
