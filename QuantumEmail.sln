@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35707.178
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuantumEmail", "src\QuantumEmail\QuantumEmail.csproj", "{2F69EC46-6415-4A36-9C06-86D50AB53651}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2F69EC46-6415-4A36-9C06-86D50AB53651}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F69EC46-6415-4A36-9C06-86D50AB53651}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F69EC46-6415-4A36-9C06-86D50AB53651}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F69EC46-6415-4A36-9C06-86D50AB53651}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {EC73C11B-B3D6-48E6-AE9A-9E80D09461CF}
+	EndGlobalSection
+EndGlobal
