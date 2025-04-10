@@ -14,7 +14,7 @@ namespace QuantumEmail.Host
     {
         static async Task Main(string[] args)
         {
-            var mailDomain = "microsoft.com";
+            var mailDomain = "yourdomain.com";
             var mailSelector = "s1024-meo";
 
             var largePrime = await GetDkimKeyAsync(mailDomain, mailSelector);
