@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="DnsClient" Version="1.8.0" />
+    <PackageReference Include="Microsoft.Azure.Quantum.Client" Version="0.28.302812" />
+    <PackageReference Include="Microsoft.Quantum.Providers.Honeywell" Version="0.28.302812" />
   </ItemGroup>
 
   <ItemGroup>
