@@ -26,20 +26,24 @@ internal class BigintegerMath
         }
     }
 
+    // Pollard's rho O(n^1/4) — still infeasible for RSA-1024 but vastly better than trial division for smaller keys.
     public static (BigInteger p, BigInteger q) FactorizeModulus(BigInteger n)
     {
-        BigInteger p = 0, q = 0;
-        BigInteger sqrtN = Sqrt(n);
-        for (BigInteger i = 3; i <= sqrtN; i += 2)
+        if (n % 2 == 0) return (2, n / 2);
+
+        for (BigInteger c = 1; c < 20; c++)
         {
-            if (n % i == 0)
+            BigInteger x = 2, y = 2, d = 1;
+            while (d == 1)
             {
-                p = i;
-                q = n / i;
-                break;
+                x = (x * x + c) % n;
+                y = (y * y + c) % n;
+                y = (y * y + c) % n;
+                d = BigInteger.GreatestCommonDivisor(BigInteger.Abs(x - y), n);
             }
+            if (d != n) return (d, n / d);
         }
-        return (p, q);
+        return (0, 0);
     }
 
     public static BigInteger CalculatePrivateExponent(BigInteger e, BigInteger p, BigInteger q)

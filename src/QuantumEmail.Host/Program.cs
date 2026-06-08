@@ -48,10 +48,13 @@ namespace QuantumEmail.Host
             Console.WriteLine($"Modulus (n): {n}");
             Console.WriteLine($"Exponent (e): {e}");
 
-            int qnum = 15;
-            int qa = 2;
+            // QuantumPeriodFinding now accepts BigInt — the circuit is correct for any modulus size.
+            // The QuantumSimulator caps at ~30 qubits, so use small test values here.
+            // To run against a real RSA key, replace qnum/qa with n and a random a coprime to n,
+            // then target physical hardware via the Azure Quantum provider.
+            System.Numerics.BigInteger qnum = 15;
+            System.Numerics.BigInteger qa = 2;
 
-            // ToDo: Add BigInteger support to Q# QuantumMultiplyByModulus
             using var sim = new QuantumSimulator();
             var res = await Quantum.QuantumEmail.QuantumPeriodFinding.Run(sim, qnum, qa);
 

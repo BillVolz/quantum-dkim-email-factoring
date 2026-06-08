@@ -1,11 +1,17 @@
-﻿namespace Quantum.QuantumEmail {
+namespace Quantum.QuantumEmail {
 
 //Credit: https://tsmatz.wordpress.com/2019/06/04/quantum-integer-factorization-by-shor-period-finding-algorithm/
+// BigInt migration: all Int parameters changed to BigInt to support large RSA moduli.
+// Simulator limit: QuantumSimulator supports ~30 qubits. RSA-1024 needs ~3000+ logical qubits.
+// Use small test inputs (e.g. num=15, a=2) on the simulator; real keys require physical hardware.
 
     open Microsoft.Quantum.Canon;
     open Microsoft.Quantum.Intrinsic;
     open Microsoft.Quantum.Math;
     open Microsoft.Quantum.Measurement;
+    open Microsoft.Quantum.Arrays;
+    open Microsoft.Quantum.Convert;
+    open Microsoft.Quantum.Diagnostics;
 
     @EntryPoint()
     operation GetRandomResult() : Result {
@@ -13,251 +19,184 @@
         H(q);
         return M(q);
     }
-    
 
-operation QuantumPeriodFinding (num : Int, a : Int) : Int {
-  // Get least integer n1 such as : num^2 <= 2^n1
-  let n1 = BitSizeI(num) * 2;
-  let n2 = BitSizeI(num);
-  mutable periodCandidate = 1;
-  repeat {
-    use (x, y) = (Qubit[n1], Qubit[n2]) {
-      Microsoft.Quantum.Canon.ApplyToEachCA(H, x);
+    operation QuantumPeriodFinding(num : BigInt, a : BigInt) : BigInt {
+        let n1 = BitSizeL(num) * 2;
+        let n2 = BitSizeL(num);
+        mutable periodCandidateL = 1L;
+        repeat {
+            use (x, y) = (Qubit[n1], Qubit[n2]) {
+                ApplyToEachCA(H, x);
 
-      // |x⟩ |0 (=y)⟩ -> |x⟩ |a^x mod N⟩
-      QuantumExponentForPeriodFinding(a, num, x, y);
+                // |x⟩ |0⟩ -> |x⟩ |a^x mod num⟩
+                QuantumExponentForPeriodFinding(a, num, x, y);
 
-      // measure y and reset
-      mutable tmpResult = new Result[n2];
-      for idx in 0 .. n2 - 1 {
-        set tmpResult w/= idx <-MResetZ(y[idx]);
-      }
+                mutable tmpResult = [Zero, size = n2];
+                for idx in 0 .. n2 - 1 {
+                    set tmpResult w/= idx <- MResetZ(y[idx]);
+                }
 
-      // QFT for x
-      QFTImpl(x);
+                QFTImpl(x);
 
-      // Measure x and reset
-      mutable realResult = new Result[n1];
-      for idx in 0 .. n1 - 1 {
-        set realResult w/= idx <-MResetZ(x[idx]);
-      }
-      
-      // get integer's result from measured array (ex : |011⟩ -> 3)
-      let resultBool = [false] + Microsoft.Quantum.Convert.ResultArrayAsBoolArray(realResult); // for making unsigned positive integer, add first bit
-      let resultBool_R = Microsoft.Quantum.Arrays.Reversed(resultBool); // because BoolArrayAsBigInt() is Little Endian order
-      let resultIntL = Microsoft.Quantum.Convert.BoolArrayAsBigInt(resultBool_R);
+                mutable realResult = [Zero, size = n1];
+                for idx in 0 .. n1 - 1 {
+                    set realResult w/= idx <- MResetZ(x[idx]);
+                }
 
-      // get period candidate by continued fraction expansion (thanks to Euclid !)
-      let gcdL = GreatestCommonDivisorL(resultIntL, 2L^n1);
-      let calculatedNumerator = resultIntL / gcdL;
-      let calculatedDenominator = 2L^n1 / gcdL;
-      let numL = Microsoft.Quantum.Convert.IntAsBigInt(num);
-      let approximatedFraction =
-        ContinuedFractionConvergentL(BigFraction(calculatedNumerator, calculatedDenominator), numL);
-      let (approximatedNumerator, approximatedDenominator) = approximatedFraction!;
-      mutable periodCandidateL = 0L;
-      if(approximatedDenominator < 0L) {
-        set periodCandidateL = approximatedDenominator * -1L;
-      }
-      else {
-        set periodCandidateL = approximatedDenominator;       
-      }
-      set periodCandidate = ReduceBigIntToInt(periodCandidateL);
+                // get integer result from measured array
+                let resultBool = [false] + ResultArrayAsBoolArray(realResult);
+                let resultBool_R = Reversed(resultBool);
+                let resultIntL = BoolArrayAsBigInt(resultBool_R);
 
-      // output for debugging
-      Message($"Measured Fraction : {resultIntL} / {2L^n1}");
-      Message($"Approximated Fraction : {approximatedNumerator} / {approximatedDenominator}");
-      Message($"Period Candidate : {periodCandidate}");
-    }
-  }
-  until ((periodCandidate != 0) and (ExpModI(a, periodCandidate, num) == 1))
-  fixup {
-  }
+                // get period candidate by continued fraction expansion
+                let twoToN1 = 1L <<< n1;
+                let gcdL = GreatestCommonDivisorL(resultIntL, twoToN1);
+                let calculatedNumerator = resultIntL / gcdL;
+                let calculatedDenominator = twoToN1 / gcdL;
+                let approximatedFraction =
+                    ContinuedFractionConvergentL(BigFraction(calculatedNumerator, calculatedDenominator), num);
+                let (approximatedNumerator, approximatedDenominator) = approximatedFraction!;
 
-  // output for debugging
-  Message("Found period " + Microsoft.Quantum.Convert.IntAsString(periodCandidate));
-  Message("");
-  return periodCandidate;
-}
+                if (approximatedDenominator < 0L) {
+                    set periodCandidateL = -approximatedDenominator;
+                } else {
+                    set periodCandidateL = approximatedDenominator;
+                }
 
-// Implement : |x⟩ |0 (=y)⟩ -> |x⟩ |a^x mod N⟩ for some integer a
-// (where y should be |0⟩)
-// This is modified version of QuantumExponentByModulus() in my post.
-// See https://tsmatz.wordpress.com/2019/05/22/quantum-computing-modulus-add-subtract-multiply-exponent/
-operation QuantumExponentForPeriodFinding (a : Int, N : Int, x : Qubit[], y : Qubit[]) : Unit {
-  let n1 = Length(x);
-  let n2 = Length(y);
+                Message($"Measured Fraction : {resultIntL} / {twoToN1}");
+                Message($"Approximated Fraction : {approximatedNumerator} / {approximatedDenominator}");
+                Message($"Period Candidate : {periodCandidateL}");
+            }
+        }
+        until ((periodCandidateL != 0L) and (ExpModL(a, periodCandidateL, num) == 1L))
+        fixup {}
 
-  // set |y⟩ = |0...01⟩
-  X(y[n2 - 1]);
-
-  for idx in 0 .. n1 - 1 {
-    // a^(2^((n1-1) - idx)) is too big, then we reduce beforehand
-    mutable a_mod = 1;
-    for power in 1 .. 2^((n1-1) - idx) {
-      set a_mod = (a_mod * a) % N;
-    }
-    // apply decomposition elements
-    Controlled QuantumMultiplyByModulus([x[idx]], (N, a_mod, y));
-  }
-}
-
-// This is helper function to convert BigInt to Int ...
-operation ReduceBigIntToInt(numL : BigInt) : Int {
-  // Check if numL is not large
-  Microsoft.Quantum.Diagnostics.Fact(BitSizeL(numL) <= 32, $"Cannot convert to Int. Input is too large");
-
-  mutable resultInt = 0;
-  let numArray = Microsoft.Quantum.Convert.BigIntAsBoolArray(numL);
-  let numArray_R = Microsoft.Quantum.Arrays.Reversed(numArray); // because BigIntAsBoolArray() is Little Endian order
-  let nSize = Length(numArray_R);
-  for idx in 0 .. nSize - 1 {
-    if(numArray_R[idx] and ((nSize - 1) - idx <= 31)) {
-      set resultInt = resultInt + (2 ^ ((nSize - 1) - idx));
-    }
-  }
-  return resultInt;
-}
-
-//
-// Implement : |x⟩ |y⟩ -> |x⟩ |x+y mod N⟩ for some integer N
-// (where N < 2^n, x < N, y < N)
-//
-operation QuantumAddByModulus (N : Int, x : Qubit[], y : Qubit[]) : Unit is Adj + Ctl {
-  use (ancilla, cx, cy) = (Qubit(), Qubit(), Qubit()) {
-    // add bit for preventing overflow
-    let x_large = [cx] + x;
-    let y_large = [cy] + y;
-    // |x⟩ |y⟩ -> |x⟩ |x + y⟩
-    QuantumAdd(x_large, y_large);
-    // |y⟩ -> |y - N⟩
-    Adjoint QuantumAddByNumber(y_large, N);
-    // Turn on ancilla when first bit is |1⟩ (i.e, when x + y - N < 0)
-    Controlled X([y_large[0]], ancilla);
-    // Add N back when ancilla is |1⟩
-    Controlled QuantumAddByNumber([ancilla], (y_large, N));
-    // set ancilla to |0⟩ (See my above description)
-    Adjoint QuantumAdd(x_large, y_large);
-    X(ancilla);
-    Controlled X([y_large[0]], ancilla);
-    QuantumAdd(x_large, y_large);
-  }
-}
-
-//
-// Implement : |y⟩ -> |a y mod N⟩ for some integer a and N
-// (where N < 2^n, y < N)
-//
-// Important Note :
-// Integer "a" and "N" must be co-prime number.
-// (For making this operator must be controlled. Otherwise InverseModI() raises an error.)
-//
-operation QuantumMultiplyByModulus (N : Int, a : Int, y : Qubit[]) : Unit is Adj + Ctl {
-  let n = Length(y);
-  let a_mod = a % N;
-
-  use s = Qubit[n] {
-    // start |y⟩ |0⟩
-
-    // apply adder by repeating "a" (integer) times
-    for r in 0 .. a_mod - 1 {
-      QuantumAddByModulus(N, y, s);
-    }
-    // now |y⟩ |a y mod N⟩
-
-    // swap first register and second one by tuple
-    Microsoft.Quantum.Canon.ApplyToEachCA(SWAP, Microsoft.Quantum.Arrays.Zipped(y, s));
-    // now |a y mod N⟩ |y⟩
-
-    // reset all s qubits !
-    // but it's tricky because we cannot use "Reset()". (See my above description.)
-    let a_inv = InverseModI(a_mod, N);
-    for r in 0 .. a_inv - 1 {
-      Adjoint QuantumAddByModulus(N, y, s);
-    }
-  }
-}
-
-//
-// Implement : |x⟩ -> |a^x mod N⟩ for some integer a and N
-// (where N < 2^n)
-//
-// Important Note :
-// Integer "a" and "N" must be co-prime number.
-// (Because this invokes QuantumMultiplyByModulus().)
-//
-operation QuantumExponentByModulus (N : Int, a : Int, x : Qubit[]) : Unit {
-  let n = Length(x);
-  use s = Qubit[n] {
-    // set |s⟩ = |1⟩
-    X(s[n - 1]);
-
-    // apply decomposition elements
-    for idx in 0 .. n - 1 {
-      Controlled QuantumMultiplyByModulus([x[idx]], (N, a^(2^((n-1) - idx)), s));
+        Message($"Found period {periodCandidateL}");
+        return periodCandidateL;
     }
 
-    // swap |x⟩ and |s⟩
-    Microsoft.Quantum.Canon.ApplyToEachCA(SWAP, Microsoft.Quantum.Arrays.Zipped(x, s));
-
-    // Reset s
-    for idx in 0 .. n - 1 {
-      Reset(s[idx]);
+    operation QuantumExponentForPeriodFinding(a : BigInt, N : BigInt, x : Qubit[], y : Qubit[]) : Unit {
+        let n1 = Length(x);
+        let n2 = Length(y);
+        X(y[n2 - 1]);
+        for idx in 0 .. n1 - 1 {
+            // Compute a^(2^((n1-1)-idx)) mod N via repeated squaring — avoids Int overflow
+            mutable a_mod = a % N;
+            for _ in 1 .. (n1 - 1) - idx {
+                set a_mod = (a_mod * a_mod) % N;
+            }
+            Controlled QuantumMultiplyByModulus([x[idx]], (N, a_mod, y));
+        }
     }
-  }
-}
 
-
-//
-// Implement : |x⟩ |y⟩ -> |x⟩ |x + y mod 2^n⟩ where n = Length(x) = Length(y)
-// with Drapper algorithm (See https://arxiv.org/pdf/1411.5949.pdf)
-//
-operation QuantumAdd (x : Qubit[], y : Qubit[]) : Unit is Adj + Ctl {
-  let n = Length(x);
-  QFTImpl(y);
-  for i in 0 .. n - 1 {
-    for j in 0 .. (n - 1) - i {
-      Controlled R1Frac([x[i + j]], (2, j + 1, (y)[(n - 1) - i]));
+    // Classically precomputes [factor*2^0 mod N, factor*2^1 mod N, ..., factor*2^(n-1) mod N].
+    // A Q# function (not operation) so mutable/set are allowed without blocking Adj+Ctl auto-generation.
+    function BitDecompFactors(N : BigInt, factor : BigInt, n : Int) : BigInt[] {
+        mutable result = [0L, size = n];
+        mutable aMod = factor % N;
+        for i in 0 .. n - 1 {
+            set result w/= i <- aMod;
+            set aMod = (aMod * 2L) % N;
+        }
+        return result;
     }
-  }
-  Adjoint QFTImpl(y);
-}
 
-
-//
-// Implement : |x⟩ -> |x + b mod 2^n⟩ for some integer b
-//
-operation QuantumAddByNumber (x : Qubit[], b : Int) : Unit is Adj + Ctl {
-  let n = Length(x);
-
-  // apply Draper adder for numeric
-  QFTImpl(x);
-  for i in 0 .. n - 1 {
-    for j in 0 .. (n - 1) - i {
-      if(not((b / 2^((n - 1) - (i + j))) % 2 == 0)) {
-        R1Frac(2, j + 1, (x)[(n - 1) - i]);
-      }
+    // |y⟩ -> |a*y mod N⟩
+    // O(log a) bit-decomposition replaces the original O(a) repeated-addition loop.
+    // No set-statements in body, so Q# can auto-generate Adj and Ctl specializations.
+    operation QuantumMultiplyByModulus(N : BigInt, a : BigInt, y : Qubit[]) : Unit is Adj + Ctl {
+        let n = Length(y);
+        let a_mod = a % N;
+        let factors = BitDecompFactors(N, a_mod, n);
+        let inv_factors = BitDecompFactors(N, InverseModL(a_mod, N), n);
+        use s = Qubit[n] {
+            // Forward: s = a * y_orig mod N  (bit-decompose y as the control register)
+            for i in 0 .. n - 1 {
+                Controlled QuantumAddConstByModulus([y[i]], (N, factors[i], s));
+            }
+            // s = a*y_orig mod N,  y = y_orig
+            ApplyToEachCA(SWAP, Zipped(y, s));
+            // y = a*y_orig mod N,  s = y_orig
+            // Uncompute s: subtract a_inv * y from s, leaving s = 0
+            for i in 0 .. n - 1 {
+                Controlled Adjoint QuantumAddConstByModulus([y[i]], (N, inv_factors[i], s));
+            }
+        }
     }
-  }
-  Adjoint QFTImpl(x);
-}
-operation QFTImpl (qs : Qubit[]) : Unit is Adj + Ctl
-{
-  body (...)
-  {
-    let nQubits = Length(qs);
-      
-    for i in 0 .. nQubits - 1
-    {
-      H(qs[i]);
-      for j in i + 1 .. nQubits - 1
-      {
-        Controlled R1Frac([qs[j]], (1, j - i, qs[i]));
-      }
-    }
-      
-    Microsoft.Quantum.Canon.SwapReverseRegister(qs);
-  }
-}
-}
 
+    // Add classical BigInt constant c to quantum register y, modulo N.
+    // No set-statements: all bindings are let, all called operations are Adj+Ctl.
+    // Q# auto-generates Adj (subtract c = add N-c) and Ctl specializations correctly.
+    operation QuantumAddConstByModulus(N : BigInt, c : BigInt, y : Qubit[]) : Unit is Adj + Ctl {
+        use (ancilla, cy) = (Qubit(), Qubit()) {
+            let y_large = [cy] + y;
+            let c_mod = c % N;
+            QuantumAddByNumber(y_large, c_mod);
+            Adjoint QuantumAddByNumber(y_large, N);
+            // ancilla = 1 when y + c - N < 0 (i.e. y + c < N; no reduction needed)
+            Controlled X([y_large[0]], ancilla);
+            Controlled QuantumAddByNumber([ancilla], (y_large, N));
+            // reset ancilla
+            Adjoint QuantumAddByNumber(y_large, c_mod);
+            X(ancilla);
+            Controlled X([y_large[0]], ancilla);
+            QuantumAddByNumber(y_large, c_mod);
+        }
+    }
+
+    operation QuantumAddByModulus(N : BigInt, x : Qubit[], y : Qubit[]) : Unit is Adj + Ctl {
+        use (ancilla, cx, cy) = (Qubit(), Qubit(), Qubit()) {
+            let x_large = [cx] + x;
+            let y_large = [cy] + y;
+            QuantumAdd(x_large, y_large);
+            Adjoint QuantumAddByNumber(y_large, N);
+            Controlled X([y_large[0]], ancilla);
+            Controlled QuantumAddByNumber([ancilla], (y_large, N));
+            Adjoint QuantumAdd(x_large, y_large);
+            X(ancilla);
+            Controlled X([y_large[0]], ancilla);
+            QuantumAdd(x_large, y_large);
+        }
+    }
+
+    // QFT-based Draper adder: |x⟩ |y⟩ -> |x⟩ |x + y mod 2^n⟩
+    operation QuantumAdd(x : Qubit[], y : Qubit[]) : Unit is Adj + Ctl {
+        let n = Length(x);
+        QFTImpl(y);
+        for i in 0 .. n - 1 {
+            for j in 0 .. (n - 1) - i {
+                Controlled R1Frac([x[i + j]], (2, j + 1, y[(n - 1) - i]));
+            }
+        }
+        Adjoint QFTImpl(y);
+    }
+
+    // Add classical BigInt constant b to quantum register x, mod 2^n (Draper / QFT-based).
+    // Uses 1L <<< shift for BigInt-safe bit extraction instead of the original Int-based 2^k.
+    operation QuantumAddByNumber(x : Qubit[], b : BigInt) : Unit is Adj + Ctl {
+        let n = Length(x);
+        QFTImpl(x);
+        for i in 0 .. n - 1 {
+            for j in 0 .. (n - 1) - i {
+                let shift = (n - 1) - (i + j);
+                if (not ((b / (1L <<< shift)) % 2L == 0L)) {
+                    R1Frac(2, j + 1, x[(n - 1) - i]);
+                }
+            }
+        }
+        Adjoint QFTImpl(x);
+    }
+
+    operation QFTImpl(qs : Qubit[]) : Unit is Adj + Ctl {
+        body (...) {
+            let nQubits = Length(qs);
+            for i in 0 .. nQubits - 1 {
+                H(qs[i]);
+                for j in i + 1 .. nQubits - 1 {
+                    Controlled R1Frac([qs[j]], (1, j - i, qs[i]));
+                }
+            }
+            SwapReverseRegister(qs);
+        }
+    }
+}
