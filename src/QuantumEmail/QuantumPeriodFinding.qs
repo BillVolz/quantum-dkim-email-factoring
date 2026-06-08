@@ -35,17 +35,11 @@ namespace Quantum.QuantumEmail {
             QuantumExponentForPeriodFinding(a, N, x, y);
 
             // Measure y to collapse entanglement (values not needed by host)
-            for idx in 0 .. n2 - 1 {
-                let _ = MResetZ(y[idx]);
-            }
+            ResetAll(y);
 
             // Apply QFT then measure x
             QFTImpl(x);
-            mutable xResults = [Zero, size = n1];
-            for idx in 0 .. n1 - 1 {
-                set xResults w/= idx <- MResetZ(x[idx]);
-            }
-            return xResults;
+            return ForEach(MResetZ, x);
         }
     }
 
