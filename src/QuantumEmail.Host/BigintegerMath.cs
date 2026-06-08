@@ -108,6 +108,64 @@ internal class BigintegerMath
         return root;
     }
 
+    // Returns a random a where 1 < a < n and gcd(a, n) == 1.
+    // If gcd(a, n) > 1 on the first try, that value IS a factor — check before calling the circuit.
+    public static BigInteger PickCoprime(BigInteger n)
+    {
+        using var rng = RandomNumberGenerator.Create();
+        while (true)
+        {
+            var bytes = new byte[n.GetByteCount(isUnsigned: true)];
+            rng.GetBytes(bytes);
+            var a = new BigInteger(bytes, isUnsigned: true) % (n - 2) + 2;
+            if (BigInteger.GreatestCommonDivisor(a, n) == 1) return a;
+        }
+    }
+
+    // Convert a bit array (MSB first) to a BigInteger.
+    public static BigInteger BitsToInt(bool[] bits)
+    {
+        BigInteger result = 0;
+        foreach (bool b in bits)
+            result = (result << 1) | (b ? BigInteger.One : BigInteger.Zero);
+        return result;
+    }
+
+    // Yield continued-fraction convergent denominators of p/q, up to maxDenom.
+    public static IEnumerable<BigInteger> ContinuedFractionDenominators(BigInteger p, BigInteger q, BigInteger maxDenom)
+    {
+        BigInteger h0 = 1, h1 = 0;
+        while (q != 0)
+        {
+            BigInteger a = p / q;
+            BigInteger hn = a * h1 + h0;
+            if (hn > maxDenom) yield break;
+            if (hn > 0) yield return hn;
+            h0 = h1;
+            h1 = hn;
+            BigInteger r = p % q;
+            p = q;
+            q = r;
+        }
+    }
+
+    // Interpret the QFT output xBits as the fraction measured/2^n1, apply continued
+    // fractions to extract period candidates, and return the first r where a^r ≡ 1 (mod N).
+    public static BigInteger FindPeriodFromMeasurements(bool[] xBits, BigInteger a, BigInteger N)
+    {
+        int n1 = xBits.Length;
+        BigInteger measured = BitsToInt(xBits);
+        if (measured == 0) return 0;
+
+        BigInteger domainSize = BigInteger.Pow(2, n1);
+        foreach (BigInteger r in ContinuedFractionDenominators(measured, domainSize, N))
+        {
+            if (r > 0 && BigInteger.ModPow(a, r, N) == 1)
+                return r;
+        }
+        return 0;
+    }
+
     public static async Task<string?> GetDkimKeyAsync(string domain, string selector)
     {
         string query = $"{selector}._domainkey.{domain}";
