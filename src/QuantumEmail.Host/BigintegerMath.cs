@@ -27,21 +27,22 @@ internal class BigintegerMath
     }
 
     // Pollard's rho O(n^1/4) — still infeasible for RSA-1024 but vastly better than trial division for smaller keys.
-    public static (BigInteger p, BigInteger q) FactorizeModulus(BigInteger n)
+    // MaxIterations per polynomial prevents hanging on prime/malformed inputs or rho cycles that don't converge.
+    public static (BigInteger p, BigInteger q) FactorizeModulus(BigInteger n, int maxIterationsPerC = 1_000_000)
     {
         if (n % 2 == 0) return (2, n / 2);
 
         for (BigInteger c = 1; c < 20; c++)
         {
             BigInteger x = 2, y = 2, d = 1;
-            while (d == 1)
+            for (int i = 0; i < maxIterationsPerC && d == 1; i++)
             {
                 x = (x * x + c) % n;
                 y = (y * y + c) % n;
                 y = (y * y + c) % n;
                 d = BigInteger.GreatestCommonDivisor(BigInteger.Abs(x - y), n);
             }
-            if (d != n) return (d, n / d);
+            if (d > 1 && d < n) return (d, n / d);
         }
         return (0, 0);
     }
